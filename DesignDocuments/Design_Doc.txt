@@ -1,0 +1,119 @@
+Design Principles Document
+1. Introduction
+1.1 Purpose
+This document defines the design principles for the web-based job and ticket management system, ensuring a straightforward, efficient, and distraction-free user interface (UI) and user experience (UX) for field technicians, managers, and administrators who rely on their eyes and hands for work. The system prioritizes quick data entry and task management on phones or laptops, minimizing cognitive load for users focused on their primary job tasks. These principles align with the functional and non-functional requirements in the Site Requirements Document, treating daily data entry as a secondary task that must be fast and unobtrusive. The RESTful API is powered by PostgREST, with Django handling authentication, async tasks, and WebSocket-based real-time updates.
+1.2 Scope
+In Scope: Principles for UI/UX design, focusing on rapid data input, simple navigation, responsiveness across phones and laptops, real-time updates, and role-based interfaces for working users. Covers widgets (e.g., TopBar, BottomBar, CalendarSelectBox), pages (e.g., Login, EditUserJob, Administration), and user preferences (e.g., light/dark mode). Data access is handled via PostgREST endpoints (e.g., GET /ticket_entries, GET /alerts).Out of Scope: Features for non-working users or those requiring specialized accessibility (e.g., Braille, screen readers), detailed implementation code, backend architecture details beyond PostgREST/Django integration, and future integrations (e.g., Microsoft Teams).
+1.3 Objectives
+
+Deliver a fast, no-nonsense interface for 15+ working users (field technicians, managers, administrators) to input and manage job/ticket data.
+Ensure seamless usability on phones and laptops for users distracted by primary tasks.
+Support real-time notifications and role-based access for efficient collaboration.
+Keep the design lean, avoiding unnecessary features that slow down data entry.
+Enable scalability and maintainability with simple, reusable components and PostgREST’s auto-generated APIs.
+
+2. Design Principles
+2.1 Task-Focused Simplicity
+
+Principle: Design interfaces that allow users to input data and complete tasks quickly with minimal thought, prioritizing their primary work.
+Rationale: Field technicians view daily documents (e.g., job entries, summaries) as a burden, focusing instead on hands-on tasks. The UI must enable rapid, intuitive data entry to reduce disruption.
+Application:
+Streamline forms (e.g., EditUserJob, EditUserTask) with minimal required fields (e.g., job_name, job_start_date, job_start_time) and clear labels, sent to POST/PATCH /ticket_entries.
+Use single-tap/click inputs (e.g., CalendarSelectBox defaults to 'today', TimeSelectBox to 'now') to speed up entry.
+Minimize navigation steps; allow inline editing (fields as plain text until clicked) for jobs/tasks via PATCH /ticket_entries.
+Display only essential information in widgets (e.g., ViewUserJob, ViewUserDailyList) fetched from GET /ticket_entries to avoid overwhelming users.
+
+
+
+2.2 Role-Specific Efficiency
+
+Principle: Tailor interfaces to the specific roles of field technicians, managers, and administrators, ensuring each user sees only what they need to do their job.
+Rationale: Users have distinct tasks (e.g., field users enter jobs, managers review team data, admins handle system issues), and irrelevant features waste time for busy workers.
+Application:
+Field Users: Limit access to personal job/task creation and editing (e.g., ticket_entries, ticket_misc_entries via POST/PATCH /ticket_entries), with simple forms and no deletion options.
+Managers: Provide quick access to team oversight (e.g., Team DailySummary, Management page) with single-click moderation (e.g., delete user content via DELETE /ticket_entries).
+Admins: Offer exclusive tools for system maintenance (e.g., AdminEventLog for GET /history, admin-level alerts widget for GET /alerts?alert_type=in.(security,system)) with clear action buttons.
+Use user_preferred_landing_page to direct users to role-specific dashboards (e.g., job entry for field users, team overview for managers).
+
+
+
+2.3 Device-Agnostic Usability
+
+Principle: Ensure the system is fast and functional on both phones and laptops, optimized for visual and manual input in work environments.
+Rationale: Users switch between devices (up to 3 concurrent logins) in the field or office, needing consistent, touch- or click-friendly interfaces for quick interaction.
+Application:
+Use Bootstrap 5 for responsive layouts, ensuring pages (e.g., EditUserJob, User Profile) work seamlessly on small phone screens or larger laptop displays, fetching data via PostgREST (e.g., GET /users, GET /ticket_entries).
+Optimize for touch (phones) and click (laptops) with large, tappable buttons and dropdowns (e.g., CalendarSelectBox, PictureBox for user_preferred_profile_picture).
+Apply user preferences (user_preferred_light_or_dark_mode_mobile default 'dark', user_preferred_light_or_dark_mode_desktop default 'light') for visibility in varied lighting conditions (e.g., field vs. office).
+Center content with rounded, medium-contrast boxes for a clean, professional look across devices.
+
+
+
+2.4 Real-Time, Non-Intrusive Feedback
+
+Principle: Provide immediate, subtle feedback for actions and alerts to keep users informed without pulling focus from their primary tasks.
+Rationale: Real-time updates (via WebSockets) for job-related alerts and notifications are critical, but must not interrupt hands-on work or require deep attention.
+Application:
+Push notifications/alerts to BottomBar with fade-in toasts, using color-coding (red: critical/high, orange: medium, yellow: low) and simple icons (e.g., bell for info), fetched from GET /notifications and GET /alerts.
+Enable single-tap/click actions for alerts (e.g., "Resolve", "Snooze for 1 hour") linked to PATCH /alerts (is_resolved, resolved_at).
+Update job/task views (e.g., ViewUserDailySummary) in real-time via AJAX calls to PostgREST (e.g., GET /ticket_entries?job_start_date=eq.<date>) without page refreshes.
+Batch similar alerts (daily_alert_counts view limits 5 non-critical alerts/day via GET /daily_alert_counts) with links to relevant jobs (e.g., entry_id in alerts).
+
+
+
+2.5 Visual and Functional Consistency
+
+Principle: Maintain a uniform, professional design to reduce learning time and ensure predictable interactions for busy users.
+Rationale: A consistent UI lets users input data quickly without relearning navigation, especially when multitasking.
+Application:
+Use rounded, medium-contrast widgets (e.g., TopBar, CompositionBox) with standardized fonts and spacing.
+Apply a cohesive color scheme tied to user_preferred_color for personalization without clutter, updated via PATCH /users.
+Standardize navigation with TopBar (links to profile, calendar, dailies, logout, theme toggle) across all authenticated pages.
+Show clear, concise error messages (e.g., Login page) and validation cues (e.g., Registration page) to guide users without frustration.
+
+
+
+2.6 Security Without Complexity
+
+Principle: Reinforce data security through clear, role-based restrictions and minimal user effort, avoiding extra steps that slow down work.
+Rationale: Users handle sensitive data (encrypted via pgcrypto), and role-based access (e.g., admins delete content, managers moderate) must be intuitive to maintain trust without adding complexity.
+Application:
+Visually indicate restrictions (e.g., grayed-out buttons for field users attempting unauthorized actions like deletion).
+Log all actions (history table: table_name, action, user_id) for admin auditing via AdminEventLog (GET /history), without user-facing complexity.
+Show admin-level alerts (e.g., alert_type = 'security' for failed logins) only to admins in a dedicated widget, with simple resolution options via PATCH /alerts.
+Use HTTPS with a subtle lock icon to confirm secure data entry, with PostgREST leveraging pgcrypto for encrypted fields.
+
+
+
+2.7 Lean and Maintainable Design
+
+Principle: Build modular, reusable components to support system growth while keeping the interface simple for job-focused users.
+Rationale: The system must handle 15+ users and future scalability (e.g., Docker, potential Microsoft Teams integration) without overcomplicating the UI for daily use.
+Application:
+Use reusable widgets (e.g., CalendarSelectBox, TimeSelectBox) for consistent job/task entry across pages, interfacing with PostgREST endpoints (e.g., POST/PATCH /ticket_entries).
+Implement modular CSS with Bootstrap 5 for rounded widgets/themes, minimizing maintenance effort.
+Design flexible layouts (e.g., CompositionBox for job/task data) to accommodate future features without redesign.
+Track user interactions (e.g., job entries, alert clicks) via POST /user_interaction_logs to refine UI efficiency without adding unnecessary elements.
+
+
+
+3. Implementation Guidelines
+
+Frontend Framework: Use Django Bootstrap 5 for responsive, touch/click-friendly layouts optimized for phones and laptops.
+Real-Time Features: Implement WebSockets (Django Channels) for non-intrusive notifications/alerts, triggering PostgREST queries (e.g., GET /alerts) as needed.
+Testing: Test UI/UX for role-specific efficiency (field, manager, admin) with unit tests for widgets (e.g., EditUserJob) and integration tests for page flows (e.g., job entry to team summary). Include tests for PostgREST endpoints and RLS policies. Target 80% test coverage, per technical requirements.
+Analytics: Monitor data entry speed and alert interactions (via user_interaction_logs) to optimize forms and reduce user burden.
+
+4. References
+
+SiteRequirementsDocument.txt: Defines functional/non-functional requirements, including widgets, pages, and role-based access.
+Database_schema.txt: Supports UI with data structures (e.g., users, ticket_entries, alerts, import_export_logs).
+Pages.txt and DesignRequirements.txt: Specify page layouts and design details (assumed available).
+Widgets.txt: Details widget specifications (e.g., TopBar, BottomBar, PictureBox).
+
+Document Created Date: 2025-08-26
+Document Modified Date: 2025-08-27
+Version: 1.0.1
+Update Notes:
+- 2025-08-26 (v1.0.0): Initial creation.
+- 2025-08-27 (v1.0.1): Aligned with build fixes for Docker/pyenv stability.

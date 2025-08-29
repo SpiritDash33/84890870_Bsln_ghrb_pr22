@@ -1,0 +1,34 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+django = "*"
+djangorestframework = "*"
+django-allauth = "*"
+django-ratelimit = "*"
+django-crispy-forms = "*"
+django-filter = "*"
+django-storages = "*"
+psycopg2-binary = "*"
+cryptography = "*"
+pillow = "*"
+requests = "*"
+python-decouple = "*"
+channels = "*"
+channels-redis = "*"
+celery = "*"
+redis = "*"
+mail-parser = "*"
+gunicorn = "*"
+uvicorn = "*"
+pytest = "*"
+django-bootstrap5 = "*"
+crispy-bootstrap5 = "*"
+sentry-sdk = "*"
+django-debug-toolbar = "*"
+dj-database-url = "*"
+
+[requires]
+python_version = "3.12"

@@ -1,0 +1,94 @@
+Development Approach
+Overview
+This document outlines the development approach for the web-based job and ticket management system, focusing on a modular, RESTful architecture to ensure a lean, efficient, and distraction-free interface for working users (field technicians, managers, administrators). The system prioritizes quick data entry on phones or laptops, aligning with the SiteRequirementsDocument.txt, DesignPrinciplesDocument.txt, and Database_schema.txt. Pages, widgets, and views are organized to support rapid task completion, role-based access, and responsiveness, with testing-only features (e.g., display mode toggle) restricted to development/staging environments. The RESTful API is primarily powered by PostgREST, which auto-generates endpoints from the PostgreSQL schema, complemented by Django for authentication, async tasks, and WebSocket-based real-time features.
+Modular Design Principles
+
+Pages: Built as Django templates, composed of reusable widgets and views. Each page is a single HTML file that aggregates widgets and fetches data via PostgREST API endpoints (e.g., /ticket_entries, /users), ensuring modularity and maintainability. Django handles rendering and non-API logic (e.g., session management, file uploads).
+Widgets: Implemented as Django template partials (inclusion tags or custom tags) that render specific views. Widgets fetch data from PostgREST endpoints (e.g., GET /ticket_entries?user_id=eq.<uuid>&select=job_name,job_start_date) and are styled with Bootstrap 5 for responsive, touch/click-friendly design, optimized for minimal cognitive load.
+Views:
+Database Views: SQL views (e.g., daily_alert_counts) defined in Database_schema.txt to aggregate data, accessible via PostgREST (e.g., GET /daily_alert_counts).
+API Views: PostgREST auto-generates RESTful endpoints for all tables and views (e.g., users, ticket_entries, alerts) with support for GET, POST, PATCH, DELETE, filtering, sorting, and joins. Custom PostgreSQL functions (e.g., check_failed_logins) are exposed as RPC endpoints (e.g., POST /rpc/check_failed_logins). Django handles authentication (JWT for PostgREST) and custom logic not covered by PostgREST.
+Generic Views: PostgREST supports flexible queries (e.g., /ticket_entries?select=*,devices(*)&job_start_date=gte.<date>) for reuse across widgets, enhancing modularity.
+
+
+RESTful Architecture: PostgREST provides stateless data access for widgets, ensuring scalability and compatibility with real-time features via WebSockets (Django Channels). Django middleware generates JWT tokens for PostgREST authentication, aligning with user_sessions table.
+Testing-Only Features: The display mode toggle (user_preferred_display_mode) is restricted to non-production environments (DEBUG=True), hidden in production to maintain simplicity for end users.
+
+Component Breakdown
+Pages
+Pages are Django templates that combine widgets and data from PostgREST endpoints to deliver role-specific functionality. They are responsive (Bootstrap 5) and adhere to the DesignPrinciplesDocument.txt focus on simplicity and device-agnostic usability.
+
+Unauthenticated Pages:
+Main: Static page with title and picture, no widgets/views.
+Login: Form for email/password with error messages, handled by Django Allauth, generating JWT for PostgREST.
+Registration: Form with validation for name, alias, email, password, terms agreement, stored via POST /users to PostgREST.
+Terms/Conditions: Static terms content.
+Contact: Static contact information.
+
+
+Authenticated Pages:
+User Profile: Displays ProfileOverview widget with data from GET /users?user_id=eq.<uuid> and team summary from GET /user_groups.
+Preferences: Form to update user preferences (e.g., user_preferred_color, user_preferred_display_mode in testing) via PATCH /users?user_id=eq.<uuid>.
+Stats: Shows User/Team Stats views from GET /ticket_entries and GET /ticket_misc_entries with filters.
+Edit/View Job: Includes EditUserJob/ViewUserJob widgets fetching/editing data via /ticket_entries.
+Dailies/Summary: Uses ViewUserDailyFull/List/Summary widgets with data from GET /ticket_entries and GET /daily_alert_counts.
+Calendar: Displays User/Team Calendar widgets with data from GET /ticket_entries?select=job_start_date,job_start_time.
+Team Overview/Dailies/Stats/Calendar: Aggregates team-specific data via PostgREST queries (e.g., GET /ticket_entries?user_id=in.(<team_user_ids>)).
+
+
+Restricted Pages:
+Administration: Admin-only, includes AdminEventLog widget (data from GET /history) and admin alerts view (GET /alerts?alert_type=in.(security,system)).
+Management: Manager/admin, includes team oversight and moderation widgets with data from GET /ticket_entries and GET /alerts?alert_type=eq.job-related.
+
+
+
+Widgets
+Widgets are reusable UI components implemented as Django template partials, each tied to specific PostgREST endpoints for data display or input. They are styled with Bootstrap 5 for consistency and responsiveness, ensuring quick, intuitive interactions.
+
+Core Widgets:
+TopBar: Navigation bar with links to profile, calendar, dailies, logout, theme toggle, and testing-only display toggle (hidden in production via settings.DEBUG).
+BottomBar: Displays date/time, notifications/alerts toasts (from GET /notifications, GET /alerts), and admin-only alerts widget.
+
+
+Input Widgets:
+PictureBox: Handles file uploads for user_preferred_profile_picture, processed by Django and stored via PATCH /users.
+ColorWheel: Selects user_preferred_color for UI customization, updated via PATCH /users.
+CalendarSelectBox: Selects dates (e.g., job_start_date, default 'today') for job/task entry, sent to POST/PATCH /ticket_entries.
+TimeSelectBox: Selects times (e.g., job_start_time, default 'now') for job/task entry, sent to POST/PATCH /ticket_entries.
+CompositionBox: Provides custom layouts for job/task data entry, interfacing with PostgREST endpoints.
+
+
+Display Widgets:
+ProfileOverview: Shows user data from GET /users?select=user_name,user_alias,user_email,user_preferred_profile_picture.
+ViewUserJob/ViewUserTask: Displays job/task data from GET /ticket_entries and GET /ticket_misc_entries.
+ViewUserDailyFull/List/Summary: Renders daily job/task summaries from GET /ticket_entries?job_start_date=eq.<date>.
+ViewTeamDailySummary: Shows team-level job summaries from GET /ticket_entries?user_id=in.(<team_user_ids>).
+AdminEventLog: Displays history table data for admins via GET /history.
+AdminAlertsWidget: Shows admin-level alerts via GET /alerts?alert_type=in.(security,system).
+
+
+
+Views
+Views provide data selections for widgets, implemented as database views or PostgREST endpoints. They support modular, RESTful data access with role-based permissions.
+
+Database Views (from Database_schema.txt):
+daily_alert_counts: Aggregates non-critical alerts per user/day, accessible via GET /daily_alert_counts.
+
+
+API Views (PostgREST endpoints):
+Specific Views:
+UserProfileView: Selects user_name, user_alias, user_email, user_preferred_profile_picture via GET /users?user_id=eq.<uuid>.
+JobView: Selects fields from ticket_entries (e.g., job_name, job_start_date, job_followup_required) via GET /ticket_entries.
+TaskView: Selects fields from ticket_misc_entries (e.g., misc_name, misc_start_date) via GET /ticket_misc_entries.
+AlertView: Selects fields from alerts (e.g., alert_id, alert_type, severity, message) via GET /alerts.
+NotificationView: Selects fields from notifications (e.g., notification_id, title, message) via GET /notifications.
+HistoryView: Selects fields from history for AdminEventLog via GET /history.
+
+
+Generic Views:
+GenericDataView: Supports flexible queries across tables (e.g., ticket_entries, users, alerts) with filters (e.g., GET /ticket_entries?user_id=eq.<uuid>&job_start_date=gte.<date>) for reuse across widgets.
+
+
+
+
+

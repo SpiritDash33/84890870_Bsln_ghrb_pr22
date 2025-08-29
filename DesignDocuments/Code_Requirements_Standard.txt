@@ -1,0 +1,249 @@
+Code Requirements Standard Document
+1. Introduction
+1.1 Purpose
+This document establishes the coding standards for the project, ensuring consistency, readability, maintainability, and rapid bug resolution across all code files. These standards apply to all developers and AI-assisted modifications (e.g., via Grok) contributing to the codebase, including backend (e.g., Python, Django), frontend (e.g., HTML, CSS, JavaScript), database scripts (e.g., SQL), and configuration files (e.g., YAML, JSON). Adherence to these guidelines minimizes errors, facilitates collaboration, supports scalability, and enables quick identification of bugs in field deployments through detailed error tracing and logging. The standards focus on header comments, indentation with tabs, inline documentation, input validation, error handling, testing with pytest, and controlled AI modifications to limit changes and preserve context.
+1.2 Scope
+In Scope: Header formats for code files (with versioning), indentation rules using tabs, documentation for tricky or edge-case code, input validation, SQL injection prevention, error handling with tracing, testing with pytest, and guidelines for Grok/AI modifications to ensure limited, scoped changes.Out of Scope: Specific style guides for languages (e.g., PEP 8 for Python—refer to language-specific linters) and deployment processes.Assumptions: All code is version-controlled (e.g., via Git), and automated tools (e.g., Black, Prettier, pytest) are used to enforce standards. PostgREST’s protections are leveraged, but additional safeguards are required for mixed queries. AI modifications are checked and tested to preserve existing functionality and context.
+1.3 References
+
+Database_schema.txt: For SQL script standards and PostgREST endpoint definitions.
+Development_Approach.txt: Aligns with modular design and RESTful architecture (e.g., PostgREST integration).
+SiteRequirementsDocument.txt: Supports security, performance, and rapid maintenance through documented, traceable code.
+
+2. Header Comment Requirements
+All code files must include a lean commented header at the top, providing essential metadata without unnecessary verbosity. Adapt the comment style to the file's language or type:
+
+Python (.py): Use a single multi-line """ docstring for the header to minimize lines starting with #. Use # for inline comments only.
+JavaScript/CSS/HTML (.js, .css, .html): Use /* */ for multi-line block comments, with no extra markers (e.g., *) per line.
+SQL (.sql): Use -- for single-line comments or /* */ for blocks, with no extra markers per line.
+Configuration Files (e.g., .yaml, .env): Use # or appropriate syntax.
+Other (e.g., Markdown .md, Shell .sh): Use # or appropriate syntax.
+
+The header must include the following fields in this order:
+
+File Name: The file's name, including its relative path from the project root (e.g., src/api/views.py).
+Created Date: The date the file was first created, in YYYY-MM-DD format (e.g., 2025-08-25).
+Modified Date: The last modification date, updated on each significant change, in YYYY-MM-DD format (e.g., 2025-08-25). For initial creation, this matches Created Date.
+Version: The file’s version number (e.g., 1.0.0), following semantic versioning (MAJOR.MINOR.PATCH). Increment on functional changes (MINOR) or bug fixes (PATCH).
+Description: A brief (1-2 sentences) overview of the file's purpose and functionality.
+Comments: General notes, such as dependencies, assumptions, or warnings (1-3 bullet points if needed).
+Update Notes: A concise log of changes (e.g., bullet points with dates, versions, and brief descriptions). Limit to the last 3-5 updates; use Git history for full details.
+
+Keep the header under 15-20 lines. Do not include author names (use Git blame). Update Modified Date, Version, and Update Notes on each commit affecting the file.
+2.1 Example Headers
+Python Example (views.py)
+"""
+File Name: src/api/views.py
+Created Date: 2025-08-25
+Modified Date: 2025-08-25
+Version: 1.0.0
+Description: Defines API views for user profiles and job entries, integrating with PostgREST endpoints for data fetching.
+Comments:
+- Relies on Django middleware for JWT authentication with PostgREST.
+- Assumes Redis is configured for caching user preferences.
+Update Notes:
+- 2025-08-25 (v1.0.0): Initial creation with UserProfileView and JobView.
+"""
+
+JavaScript Example (app.js)
+/*
+File Name: static/js/app.js
+Created Date: 2025-08-25
+Modified Date: 2025-08-25
+Version: 1.0.0
+Description: Handles frontend interactions for widgets like TopBar and BottomBar, fetching data from PostgREST APIs.
+Comments:
+- Uses fetch API for asynchronous calls; polyfill if needed for older browsers.
+- Theme toggles based on user_preferred_light_or_dark_mode.
+Update Notes:
+- 2025-08-25 (v1.0.0): Added real-time alert updates via WebSockets.
+*/
+
+SQL Example (schema.sql)
+/*
+File Name: db/migrations/schema.sql
+Created Date: 2025-08-25
+Modified Date: 2025-08-25
+Version: 1.0.0
+Description: Defines the PostgreSQL schema for users, tickets, and alerts tables, including triggers for alert creation.
+Comments:
+- Uses pgcrypto for encryption of sensitive fields.
+- Row-level security (RLS) policies for role-based access.
+Update Notes:
+- 2025-08-25 (v1.0.0): Added alerts table and escalation triggers.
+*/
+
+YAML Example (config.yaml)
+# File Name: config/settings.yaml
+# Created Date: 2025-08-25
+# Modified Date: 2025-08-25
+# Version: 1.0.0
+# Description: Configuration settings for Django and PostgREST integration, including database connections and JWT secrets.
+# Comments:
+# - Environment variables override these defaults.
+# Update Notes:
+# - 2025-08-25 (v1.0.0): Initial setup with Redis and Celery configs.
+
+3. Indentation Requirements
+To ensure code readability and consistency, follow these indentation rules across all files:
+
+Tabs vs. Spaces: Use tabs exclusively (no spaces for indentation). Tabs are the default in most editors, avoiding configuration overhead and search-replace errors in embedded text (e.g., SQL queries in strings).
+Indent Size: One tab per indentation level (displayed as 4 spaces in most editors; align JS/CSS/HTML for consistency).
+Line Length: Limit to 88 characters (per Black linter for Python; aim for similar in other languages to avoid wrapping).
+Blank Lines: Use single blank lines to separate logical sections (e.g., imports, classes, functions). Avoid excessive blanks.
+Nested Structures: Consistently indent nested blocks (e.g., if-statements, loops, JSON/YAML objects) with one tab per level.
+Enforcement: Use automated tools, configured to respect tabs:
+Python: Black (with --skip-string-normalization to preserve custom text; manually verify tabs).
+JS/CSS/HTML: Pr...(truncated 9611 characters)...catch (err) {
+    console.error(`Error at ${new Date()}: ${err.message}, path: ${window.location.pathname}`);
+    showToast('Failed to load jobs. Please try again.');
+}
+
+
+
+
+
+
+
+7. Testing Requirements with pytest
+
+Principle: Use pytest to ensure code reliability and catch bugs early, with tests designed to pinpoint where, why, and when issues occur for rapid field resolution.
+Requirements:
+Test Coverage: Target 80% coverage for all code (backend, frontend, SQL functions). Cover:
+API endpoints (PostgREST and Django views).
+Input validation (e.g., invalid user_email, edge cases like null job_materials_needed).
+Error handling (e.g., simulate SQL errors, network failures).
+
+
+Test Types:
+Unit Tests: Test individual functions (e.g., validate_job_name), Django forms, and PostgREST endpoint responses.
+Integration Tests: Test end-to-end flows (e.g., login to job creation via POST /ticket_entries).
+Security Tests: Test for SQL injection, XSS, and invalid inputs using pytest fixtures and tools like SQLmap.
+
+
+Error Tracing:
+Use pytest’s --tb=long for detailed stack traces in test failures.
+Log test failures to user_interaction_logs (e.g., action_type='test_failure', with timestamp and details).
+Include test metadata (e.g., test name, timestamp) in logs for traceability.
+
+
+Field Deployment:
+Run tests in CI/CD pipelines (e.g., GitHub Actions) before deployment.
+Mock external dependencies (e.g., PostgREST, Redis) using pytest-mock or responses library.
+Simulate field conditions (e.g., network latency, invalid inputs) in integration tests.
+
+
+Examples:
+Pytest (Django View Test):"""
+File Name: tests/test_views.py
+Created Date: 2025-08-25
+Modified Date: 2025-08-25
+Version: 1.0.0
+Description: Tests for API views, ensuring input validation and error handling.
+Comments:
+- Requires pytest-django and responses for mocking PostgREST.
+"""
+import pytest
+from django.core.exceptions import ValidationError
+@pytest.mark.django_db
+def test_invalid_email():
+    with pytest.raises(ValidationError) as exc_info:
+        validate_job_name("<script>alert('xss')</script>")
+    assert "Invalid job_name" in str(exc_info.value)
+    logger.info(f"Test failure at {datetime.now()}: {exc_info.value}")
+
+
+
+
+Best Practices:
+Use pytest fixtures for reusable test data (e.g., user objects, tickets).
+Run tests with verbose output (pytest -v) and log to alerts for critical failures.
+Review test logs in AdminEventLog for field debugging.
+
+
+
+
+
+8. Grok/AI Modifications
+
+Principle: Ensure AI-assisted modifications (e.g., via Grok) are strictly limited to the scope of requested changes, preserving all existing content, especially comments, unless explicitly requested for removal or modification.
+Rationale: The codebase has been checked and tested, and unintended changes (e.g., simplifying comments, omitting code) could alter functionality or reduce debugging context, especially in field deployments where comments provide critical context.
+Requirements:
+Scoped Edits:
+AI modifications must only address the specific change request (e.g., updating a function, adding a feature).
+Preserve all existing code, comments, and documentation unless the request explicitly specifies removal or modification.
+Example: If updating validate_job_name, do not alter unrelated functions or remove comments like # Edge case: Handles null input.
+
+
+Preservation of Comments:
+Retain all inline and header comments to maintain their importance for debugging and context.
+If simplification is requested, verify with the requester that comments can be modified; otherwise, preserve verbatim.
+Example: Do not simplify # Tricky: Batch alerts to respect 5/day limit unless explicitly instructed.
+
+
+Versioning and Logging:
+Update the file’s Version and Update Notes in the header for each AI modification, noting the change date, version increment (e.g., 1.0.1 for bug fix), and brief description.
+Log AI modifications to history table (e.g., action='UPDATE', changes with diff) for auditing.
+Example: 2025-08-25 (v1.0.1): Updated validate_job_name to handle new edge case, per request #123.
+
+
+Validation and Testing:
+Run pytest tests (pytest -v --tb=long) after each AI modification to ensure no unintended changes.
+Log test results to user_interaction_logs (e.g., action_type='ai_modification_test') with correlation ID linking to the change request.
+Manually review AI-generated changes in code reviews to confirm scope compliance.
+
+
+Field Deployment Considerations:
+Ensure AI modifications are traceable via AdminEventLog (GET /history) for rapid debugging.
+Avoid AI-driven simplifications that reduce error context (e.g., removing stack trace logging).
+
+
+Examples:
+Python (AI-Modified Function):"""
+File Name: src/utils/validation.py
+Created Date: 2025-08-25
+Modified Date: 2025-08-26
+Version: 1.0.1
+Description: Utility functions for input validation.
+Comments:
+- Used by Django views and PostgREST RPC calls.
+Update Notes:
+- 2025-08-25 (v1.0.0): Initial creation.
+- 2025-08-26 (v1.0.1): Added null check to validate_job_name per request #123.
+"""
+def validate_job_name(name):
+    # Edge case: Handle null input to prevent false alerts
+    if name is None:
+        raise ValidationError("Job name cannot be null")
+    # Tricky: Restrict to alphanumeric to prevent injection
+    if not re.match(r"^[a-zA-Z0-9\s_-]+$", name):
+        logger.error(f"Invalid job_name: {name}, time: {datetime.now()}")
+        raise ValidationError("Invalid job_name format")
+
+
+
+
+Best Practices:
+Document AI change requests clearly (e.g., ticket number, scope) to guide modifications.
+Use diff tools to verify only requested changes are applied.
+Reject AI changes that omit or simplify critical content without explicit approval.
+
+
+
+
+
+9. Suggestions for Future Additions
+
+Naming Conventions: Standardize variable/function names (e.g., snake_case for Python, camelCase for JS).
+Security Coding Practices: Expand on secret management (e.g., Python Decouple) and secure session handling (e.g., JWT expiration).
+Performance Guidelines: Add rules for query optimization (e.g., leveraging PostgREST’s query planner, indexes like idx_ticket_entries_user_id).
+Project-Level Versioning: Extend semantic versioning to the project level with a a changelog file.
+Accessibility in Code: Specify ARIA label standards for widgets (e.g., ProfileOverview) for accessibility compliance.
+Log Analysis Tools: Integrate tools like Sentry for real-time error tracking in field deployments.
+Automated Bug Reporting: Add scripts to auto-report critical errors to admins via alerts table or email/SMS.
+
+Review and update this document quarterly or after major milestones.
+Document Created Date: 2025-08-25Document Modified Date: 2025-08-27Version: 1.0.1
+Update Notes:
+- 2025-08-25 (v1.0.0): Initial creation.
+- 2025-08-27 (v1.0.1): Aligned with build fixes for Docker/pyenv stability.
